@@ -64,7 +64,7 @@ float RunningAverage::getAverage()
     return _sum / _cnt;
 }
 
-// returns the max of the data-set 
+// returns the max of the data-set
 float RunningAverage::getMax() {
     if (_ar == NULL) return 0;
     float _max = _ar[0];
@@ -74,7 +74,7 @@ float RunningAverage::getMax() {
     return _max;
 }
 
-// returns the min of the data-set 
+// returns the min of the data-set
 float RunningAverage::getMin() {
     if (_ar == NULL) return 0;
     float _min = _ar[0];

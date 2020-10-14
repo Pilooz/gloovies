@@ -108,7 +108,7 @@ THE SOFTWARE.
 #include "Wire.h"
 #include "MPU6050.h"
 #include "RunningAverage.h"
-int nb_vals = 25; // for running averages 
+int nb_vals = 25; // for running averages
 
 // class default I2C address is 0x68
 // specific I2C addresses may be passed as a parameter here
@@ -149,7 +149,7 @@ void setup() {
     Wire.write(0x6B); // PWR_MGMT_1 register
     Wire.write(0);    // set to zero (wakes up the MPU-6050)
     Wire.endTransmission(true);
-    
+
     // initialize serial communication
     // (38400 chosen because it works as well at 8MHz as it does at 16MHz, but
     // it's really up to you depending on your project)
@@ -164,7 +164,7 @@ void setup() {
     Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
 
     // use the code below to change accel/gyro offset values
-    
+
     Serial.println("Updating internal sensor offsets...");
     // -76	-2359	1688	0	0	0
     // Serial.print(accelgyro.getXAccelOffset()); Serial.print("\t"); // -76
@@ -186,7 +186,7 @@ void setup() {
     // Serial.print(accelgyro.getYGyroOffset()); Serial.print("\t"); // 0
     // Serial.print(accelgyro.getZGyroOffset()); Serial.print("\t"); // 0
     // Serial.print("\n");
-  
+
 
     // configure Arduino LED pin for output
     // pinMode(LED_PIN, OUTPUT);
