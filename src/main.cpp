@@ -139,6 +139,9 @@ RunningAverage val_gz(nb_vals);
 // for a human.
 //#define OUTPUT_BINARY_ACCELGYRO
 
+//long current_millis;
+//long last_millis;
+bool turning;
 
 // #define LED_PIN 13
 // bool blinkState = false;
@@ -196,9 +199,14 @@ void setup() {
     val_gx.fillValue(0, nb_vals);
     val_gy.fillValue(0, nb_vals);
     val_gz.fillValue(0, nb_vals);
+
+    //current_millis = 0;
+    //last_millis = 0;
+    turning = false;
 }
 
 void loop() {
+  //current_millis = millis();
     // read raw accel/gyro measurements from device
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     val_ax.addValue(ax);
@@ -213,22 +221,57 @@ void loop() {
     //accelgyro.getRotation(&gx, &gy, &gz);
 
     #ifdef OUTPUT_READABLE_ACCELGYRO
+      if ((val_gz.getAverage() > 8000) && (val_gx.getAverage() < 2000)) {
+        turning = true;
+      }
+      if ((val_gz.getAverage() < 2000) && (val_gx.getAverage() > 8000)) {
+        turning = false;
+      }
+      if (turning)
+        Serial.print("turning !\n");
         // display tab-separated accel/gyro x/y/z values
+        /*
         Serial.print("a/g:\t");
-        // Serial.print(val_ax.getAverage()); Serial.print("\t");
-        // Serial.print(val_ay.getAverage()); Serial.print("\t");
-        // Serial.print(val_az.getAverage()); Serial.print("\t");
+        */
+        //Serial.print(val_ax.getAverage()); Serial.print("\t");
+        //Serial.print(val_ay.getAverage()); Serial.print("\t");
+        //Serial.print(val_az.getAverage()); Serial.print("\t");
+        //Serial.print(val_gx.getAverage()); Serial.print("\t");
+        //Serial.print(val_gy.getAverage()); Serial.print("\t");
+        //Serial.print(val_gz.getAverage()); Serial.print("\t");
+        /*
         Serial.print(val_gx.getMin()); Serial.print("\t");
         Serial.print(val_gx.getAverage()); Serial.print("\t");
         Serial.print(val_gx.getMax()); Serial.print("\t");
+        */
         // Serial.print(val_gy.getAverage()); Serial.print("\t");
         // Serial.print(val_gz.getAverage()); Serial.print("\t");
-
+        /*
+        Serial.print("x value:\t");
         if (val_gx.getAverage() < 1000) {
           Serial.print(1); Serial.print("\t");
+        } else if (val_gx.getAverage() > 10000) {
+          Serial.print(-1); Serial.print("\t");
         } else {
           Serial.print(0); Serial.print("\t");
         }
+        Serial.print("\ny value:\t");
+        if (val_gy.getAverage() < 1000) {
+          Serial.print(1); Serial.print("\t");
+        } else if (val_gy.getAverage() > 10000) {
+          Serial.print(-1); Serial.print("\t");
+        } else {
+          Serial.print(0); Serial.print("\t");
+        }
+        Serial.print("\nz value:\t");
+        if (val_gz.getAverage() < 1000) {
+          Serial.print(1); Serial.print("\t");
+        } else if (val_gz.getAverage() > 10000) {
+          Serial.print(-1); Serial.print("\t");
+        } else {
+          Serial.print(0); Serial.print("\t");
+        }
+        */
         // Serial.print(val_ax.getMin()); Serial.print("\t");
         // Serial.print(val_ay.getMin()); Serial.print("\t");
         // Serial.print(val_az.getMin()); Serial.print("\t");
@@ -243,7 +286,9 @@ void loop() {
         // Serial.print(val_gy.getMax()); Serial.print("\t");
         // Serial.print(val_gz.getMax()); Serial.print("\t");
 
+        /*
         Serial.println("");
+        */
         // Serial.print(gx); Serial.print("\t");
         // Serial.print(gy); Serial.print("\t");
         // Serial.println(gz);

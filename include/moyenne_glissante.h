@@ -107,12 +107,12 @@ void storeValues(long valx, long valy, long valz) {
 
 long get_max_X() { return maxX; }
 
-long get_moy_X() { return maxX; }
+long get_moy_X() { return moyX; }
 
 long get_max_Y() { return maxY; }
 
-long get_moy_Y() { return maxY; }
+long get_moy_Y() { return moyY; }
 
 long get_max_Z() { return maxZ; }
 
-long get_moy_Z() { return maxZ; }
+long get_moy_Z() { return moyZ; }
