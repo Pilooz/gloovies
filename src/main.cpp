@@ -108,7 +108,16 @@ THE SOFTWARE.
 #include "Wire.h"
 #include "MPU6050.h"
 #include "RunningAverage.h"
-int nb_vals = 25; // for running averages
+#include "FastLED.h"
+
+#define NUM_LEDS 1
+#define DATA_PIN D3
+#define LED_TYPE WS2811
+#define COLOR_ORDER GRB
+
+CRGB leds[NUM_LEDS];
+
+int nb_vals = 50; // for running averages
 
 // class default I2C address is 0x68
 // specific I2C addresses may be passed as a parameter here
@@ -139,12 +148,28 @@ RunningAverage val_gz(nb_vals);
 // for a human.
 //#define OUTPUT_BINARY_ACCELGYRO
 
-//long current_millis;
-//long last_millis;
+long current_millis;
+long last_millis;
 bool turning;
+bool blinker_state;
 
 // #define LED_PIN 13
 // bool blinkState = false;
+
+void blinker() {
+  if (current_millis - last_millis >= 500) {
+    if (!blinker_state) {
+      leds[0] = CRGB(255, 165, 0);
+      blinker_state = true;
+    }
+    if (blinker_state) {
+      leds[0] = CRGB(0, 0, 0);
+      blinker_state = false;
+    }
+    last_millis = current_millis;
+    FastLED.show();
+  }
+}
 
 void setup() {
     Wire.begin();
@@ -164,6 +189,8 @@ void setup() {
 
     // verify connection
     Serial.println("Testing device connections...");
+    //while (!accelgyro.testConnection());
+    
     Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
 
     // use the code below to change accel/gyro offset values
@@ -200,13 +227,20 @@ void setup() {
     val_gy.fillValue(0, nb_vals);
     val_gz.fillValue(0, nb_vals);
 
-    //current_millis = 0;
-    //last_millis = 0;
+    current_millis = 0;
+    last_millis = 0;
     turning = false;
+    blinker_state = false;
+
+    FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+    leds[0] = CRGB(255,165,0);
+    delay(5000);
+    leds[0] = CRGB(0, 0, 0);
+    FastLED.show();
 }
 
 void loop() {
-  //current_millis = millis();
+  current_millis = millis();
     // read raw accel/gyro measurements from device
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     val_ax.addValue(ax);
@@ -221,14 +255,16 @@ void loop() {
     //accelgyro.getRotation(&gx, &gy, &gz);
 
     #ifdef OUTPUT_READABLE_ACCELGYRO
-      if ((val_gz.getAverage() > 8000) && (val_gx.getAverage() < 2000)) {
-        turning = true;
-      }
-      if ((val_gz.getAverage() < 2000) && (val_gx.getAverage() > 8000)) {
+      if ((val_gz.getAverage() > 10000) && (val_gx.getAverage() < 1000)) {
         turning = false;
       }
-      if (turning)
-        Serial.print("turning !\n");
+      if ((val_gz.getAverage() < 1000) && (val_gx.getAverage() > 10000)) {
+        turning = true;
+      }
+      if (turning) {
+        blinker();
+        Serial.print("TURNING");
+      }
         // display tab-separated accel/gyro x/y/z values
         /*
         Serial.print("a/g:\t");
