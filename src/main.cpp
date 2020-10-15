@@ -111,8 +111,8 @@ THE SOFTWARE.
 #include "FastLED.h"
 
 #define NUM_LEDS 1
-#define DATA_PIN D3
-#define LED_TYPE WS2811
+#define DATA_PIN D7
+#define LED_TYPE WS2812
 #define COLOR_ORDER GRB
 
 CRGB leds[NUM_LEDS];
@@ -149,7 +149,8 @@ RunningAverage val_gz(nb_vals);
 //#define OUTPUT_BINARY_ACCELGYRO
 
 long current_millis;
-long last_millis;
+long blinker_millis;
+long reader_millis;
 bool turning;
 bool blinker_state;
 
@@ -157,16 +158,16 @@ bool blinker_state;
 // bool blinkState = false;
 
 void blinker() {
-  if (current_millis - last_millis >= 500) {
+  if (current_millis - blinker_millis >= 500) {
     if (!blinker_state) {
       leds[0] = CRGB(255, 165, 0);
       blinker_state = true;
     }
-    if (blinker_state) {
+    else {
       leds[0] = CRGB(0, 0, 0);
       blinker_state = false;
     }
-    last_millis = current_millis;
+    blinker_millis = current_millis;
     FastLED.show();
   }
 }
@@ -208,6 +209,9 @@ void setup() {
     accelgyro.setXGyroOffset(1000);
     accelgyro.setYGyroOffset(1000);
     accelgyro.setZGyroOffset(1000);
+    accelgyro.setXAccelOffset(1000);
+    accelgyro.setYAccelOffset(1000);
+    accelgyro.setZAccelOffset(1000);
 
     // Serial.print(accelgyro.getXAccelOffset()); Serial.print("\t"); // -76
     // Serial.print(accelgyro.getYAccelOffset()); Serial.print("\t"); // -2359
@@ -228,12 +232,14 @@ void setup() {
     val_gz.fillValue(0, nb_vals);
 
     current_millis = 0;
-    last_millis = 0;
+    blinker_millis = 0;
+    reader_millis = 0;
     turning = false;
     blinker_state = false;
 
     FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
     leds[0] = CRGB(255,165,0);
+    FastLED.show();
     delay(5000);
     leds[0] = CRGB(0, 0, 0);
     FastLED.show();
@@ -242,6 +248,7 @@ void setup() {
 void loop() {
   current_millis = millis();
     // read raw accel/gyro measurements from device
+  if (current_millis - reader_millis >= 100) {
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     val_ax.addValue(ax);
     val_ay.addValue(ay);
@@ -249,32 +256,39 @@ void loop() {
     val_gx.addValue(gx);
     val_gy.addValue(gy);
     val_gz.addValue(gz);
+    reader_millis = current_millis;
+
+    // display tab-separated accel/gyro x/y/z values
+    Serial.print("a/g:\t");
+    Serial.print(val_ax.getAverage()); Serial.print("   ");
+    Serial.print(val_ay.getAverage()); Serial.print("   ");
+    Serial.print(val_az.getAverage()); Serial.print("   ");
+    Serial.print("          ");
+    Serial.print(val_gx.getAverage()); Serial.print("   ");
+    Serial.print(val_gy.getAverage()); Serial.print("   ");
+    Serial.print(val_gz.getAverage()); Serial.print("   ");
+    Serial.println("");
+  }
 
     // these methods (and a few others) are also available
     //accelgyro.getAcceleration(&ax, &ay, &az);
     //accelgyro.getRotation(&gx, &gy, &gz);
 
     #ifdef OUTPUT_READABLE_ACCELGYRO
-      if ((val_gz.getAverage() > 10000) && (val_gx.getAverage() < 1000)) {
+      if ((val_gz.getAverage() > 8000) && (val_gx.getAverage() < 2000)) {
         turning = false;
       }
-      if ((val_gz.getAverage() < 1000) && (val_gx.getAverage() > 10000)) {
+      if ((val_gz.getAverage() < 2000) && (val_gx.getAverage() > 8000)) {
         turning = true;
       }
       if (turning) {
         blinker();
-        Serial.print("TURNING");
+        //Serial.print("TURNING");
+      } else {
+        blinker_state = false;
+        leds[0] = CRGB(0, 0, 0);
+        FastLED.show();
       }
-        // display tab-separated accel/gyro x/y/z values
-        /*
-        Serial.print("a/g:\t");
-        */
-        //Serial.print(val_ax.getAverage()); Serial.print("\t");
-        //Serial.print(val_ay.getAverage()); Serial.print("\t");
-        //Serial.print(val_az.getAverage()); Serial.print("\t");
-        //Serial.print(val_gx.getAverage()); Serial.print("\t");
-        //Serial.print(val_gy.getAverage()); Serial.print("\t");
-        //Serial.print(val_gz.getAverage()); Serial.print("\t");
         /*
         Serial.print(val_gx.getMin()); Serial.print("\t");
         Serial.print(val_gx.getAverage()); Serial.print("\t");
@@ -322,9 +336,6 @@ void loop() {
         // Serial.print(val_gy.getMax()); Serial.print("\t");
         // Serial.print(val_gz.getMax()); Serial.print("\t");
 
-        /*
-        Serial.println("");
-        */
         // Serial.print(gx); Serial.print("\t");
         // Serial.print(gy); Serial.print("\t");
         // Serial.println(gz);
