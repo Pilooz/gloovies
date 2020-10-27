@@ -153,6 +153,7 @@ RunningAverage val_gz(nb_vals);
 long current_millis;
 long blinker_millis;
 long reader_millis;
+long fingupter_millis;
 bool turning;
 bool blinker_state;
 
@@ -289,6 +290,7 @@ void setup() {
     current_millis = 0;
     blinker_millis = 0;
     reader_millis = 0;
+    fingupter_millis = 0;
     turning = false;
     blinker_state = false;
 
@@ -352,6 +354,10 @@ void loop() {
         blinker_state = false;
         leds[0] = CRGB(0, 0, 0);
         FastLED.show();
+      }
+      if ((digitalRead(FINGUPTER) == HIGH) && (current_millis - fingupter_millis > 5000)) {
+        digitalWrite(LIGHT_PIN, !digitalRead(LIGHT_PIN));
+        fingupter_millis = current_millis;
       }
         /*
         Serial.print(val_gx.getMin()); Serial.print("\t");
