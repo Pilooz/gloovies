@@ -117,7 +117,7 @@ THE SOFTWARE.
 
 CRGB leds[NUM_LEDS];
 
-int nb_vals = 50; // for running averages
+int nb_vals = 20; // for running averages
 
 // class default I2C address is 0x68
 // specific I2C addresses may be passed as a parameter here
@@ -160,7 +160,7 @@ bool blinker_state;
 void blinker() {
   if (current_millis - blinker_millis >= 500) {
     if (!blinker_state) {
-      leds[0] = CRGB(255, 165, 0);
+      leds[0] = CRGB(255, 100, 0);
       blinker_state = true;
     }
     else {
@@ -170,6 +170,51 @@ void blinker() {
     blinker_millis = current_millis;
     FastLED.show();
   }
+}
+
+void init_led() {
+  for (int r = 0; r < 255; r++) {
+    leds[0] = CRGB(r, 0, 0);
+    FastLED.show();
+    delay(2);
+  }
+  for (int r = 255; r > 1; r--) {
+    leds[0] = CRGB(r, 0, 0);
+    FastLED.show();
+    delay(2);
+  }
+  for (int g = 0; g < 255; g++) {
+    leds[0] = CRGB(0, g, 0);
+    FastLED.show();
+    delay(2);
+  }
+  for (int g = 255; g > 1; g--) {
+    leds[0] = CRGB(0, g, 0);
+    FastLED.show();
+    delay(2);
+  }
+  for (int b = 0; b < 255; b++) {
+    leds[0] = CRGB(0, 0, b);
+    FastLED.show();
+    delay(2);
+  }
+  for (int b = 255; b > 1; b--) {
+    leds[0] = CRGB(0, 0, b);
+    FastLED.show();
+    delay(2);
+  }
+  for (int a = 0; a < 255; a++) {
+    leds[0] = CRGB(a, a, a);
+    FastLED.show();
+    delay(2);
+  }
+  for (int a = 255; a > 1; a--) {
+    leds[0] = CRGB(a, a, a);
+    FastLED.show();
+    delay(2);
+  }
+  leds[0] = CRGB(0, 0, 0);
+  FastLED.show();
 }
 
 void setup() {
@@ -191,7 +236,7 @@ void setup() {
     // verify connection
     Serial.println("Testing device connections...");
     //while (!accelgyro.testConnection());
-    
+
     Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
 
     // use the code below to change accel/gyro offset values
@@ -206,12 +251,12 @@ void setup() {
     // Serial.print(accelgyro.getZGyroOffset()); Serial.print("\t"); // 0
     // Serial.print("\n");
 
-    accelgyro.setXGyroOffset(1000);
-    accelgyro.setYGyroOffset(1000);
-    accelgyro.setZGyroOffset(1000);
-    accelgyro.setXAccelOffset(1000);
-    accelgyro.setYAccelOffset(1000);
-    accelgyro.setZAccelOffset(1000);
+    accelgyro.setXGyroOffset(-20);
+    accelgyro.setYGyroOffset(47);
+    accelgyro.setZGyroOffset(37);
+    accelgyro.setXAccelOffset(797);
+    accelgyro.setYAccelOffset(590);
+    accelgyro.setZAccelOffset(1466);
 
     // Serial.print(accelgyro.getXAccelOffset()); Serial.print("\t"); // -76
     // Serial.print(accelgyro.getYAccelOffset()); Serial.print("\t"); // -2359
@@ -238,17 +283,13 @@ void setup() {
     blinker_state = false;
 
     FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-    leds[0] = CRGB(255,165,0);
-    FastLED.show();
-    delay(5000);
-    leds[0] = CRGB(0, 0, 0);
-    FastLED.show();
+    init_led();
 }
 
 void loop() {
   current_millis = millis();
     // read raw accel/gyro measurements from device
-  if (current_millis - reader_millis >= 100) {
+  if (current_millis - reader_millis >= 50) {
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     val_ax.addValue(ax);
     val_ay.addValue(ay);
@@ -260,6 +301,7 @@ void loop() {
 
     // display tab-separated accel/gyro x/y/z values
     Serial.print("a/g:\t");
+    /*
     Serial.print(val_ax.getAverage()); Serial.print("   ");
     Serial.print(val_ay.getAverage()); Serial.print("   ");
     Serial.print(val_az.getAverage()); Serial.print("   ");
@@ -268,6 +310,15 @@ void loop() {
     Serial.print(val_gy.getAverage()); Serial.print("   ");
     Serial.print(val_gz.getAverage()); Serial.print("   ");
     Serial.println("");
+    */
+    Serial.print(ax); Serial.print("   ");
+    Serial.print(ay); Serial.print("   ");
+    Serial.print(az); Serial.print("   ");
+    Serial.print("          ");
+    Serial.print(gx); Serial.print("   ");
+    Serial.print(gy); Serial.print("   ");
+    Serial.print(gz); Serial.print("   ");
+    Serial.println("");
   }
 
     // these methods (and a few others) are also available
@@ -275,11 +326,11 @@ void loop() {
     //accelgyro.getRotation(&gx, &gy, &gz);
 
     #ifdef OUTPUT_READABLE_ACCELGYRO
-      if ((val_gz.getAverage() > 8000) && (val_gx.getAverage() < 2000)) {
-        turning = false;
-      }
-      if ((val_gz.getAverage() < 2000) && (val_gx.getAverage() > 8000)) {
+      if ((val_ay.getAverage() > 10000) || (val_ay.getAverage() < -10000)) {
         turning = true;
+      }
+      if ((val_ay.getAverage() < 10000) && (val_ay.getAverage() > -10000)) {
+        turning = false;
       }
       if (turning) {
         blinker();
