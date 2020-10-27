@@ -114,6 +114,8 @@ THE SOFTWARE.
 #define DATA_PIN D7
 #define LED_TYPE WS2812
 #define COLOR_ORDER GRB
+#define LIGHT_PIN D8
+#define FINGUPTER D6
 
 CRGB leds[NUM_LEDS];
 
@@ -173,41 +175,49 @@ void blinker() {
 }
 
 void init_led() {
+  digitalWrite(LIGHT_PIN, HIGH);
   for (int r = 0; r < 255; r++) {
     leds[0] = CRGB(r, 0, 0);
     FastLED.show();
     delay(2);
   }
+  digitalWrite(LIGHT_PIN, LOW);
   for (int r = 255; r > 1; r--) {
     leds[0] = CRGB(r, 0, 0);
     FastLED.show();
     delay(2);
   }
+  digitalWrite(LIGHT_PIN, HIGH);
   for (int g = 0; g < 255; g++) {
     leds[0] = CRGB(0, g, 0);
     FastLED.show();
     delay(2);
   }
+  digitalWrite(LIGHT_PIN, LOW);
   for (int g = 255; g > 1; g--) {
     leds[0] = CRGB(0, g, 0);
     FastLED.show();
     delay(2);
   }
+  digitalWrite(LIGHT_PIN, HIGH);
   for (int b = 0; b < 255; b++) {
     leds[0] = CRGB(0, 0, b);
     FastLED.show();
     delay(2);
   }
+  digitalWrite(LIGHT_PIN, LOW);
   for (int b = 255; b > 1; b--) {
     leds[0] = CRGB(0, 0, b);
     FastLED.show();
     delay(2);
   }
+  digitalWrite(LIGHT_PIN, HIGH);
   for (int a = 0; a < 255; a++) {
     leds[0] = CRGB(a, a, a);
     FastLED.show();
     delay(2);
   }
+  digitalWrite(LIGHT_PIN, LOW);
   for (int a = 255; a > 1; a--) {
     leds[0] = CRGB(a, a, a);
     FastLED.show();
@@ -283,6 +293,9 @@ void setup() {
     blinker_state = false;
 
     FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+    pinMode(LIGHT_PIN, OUTPUT);
+    digitalWrite(LIGHT_PIN, LOW);
+    pinMode(FINGUPTER, INPUT_PULLUP);
     init_led();
 }
 
