@@ -154,16 +154,37 @@ long current_millis;
 long blinker_millis;
 long reader_millis;
 long fingupter_millis;
+long light_stop_millis;
+long last_loop;
+unsigned char light_stop_power;
+bool stop_light_state;
+bool operation;
 bool turning;
 bool blinker_state;
 
 // #define LED_PIN 13
 // bool blinkState = false;
 
+void light_stoping() {
+  if (current_millis - light_stop_millis >= 10) {
+    if (light_stop_power >= 255 && operation)
+      operation = false;
+    if (light_stop_power <= 0 && !operation)
+      operation = true;
+    if (operation)
+      light_stop_power += 15;
+    if (!operation)
+      light_stop_power -= 15;
+    leds[0] = CRGB(light_stop_power, 0, 0);
+    light_stop_millis = current_millis;
+    FastLED.show();
+  }
+}
+
 void blinker() {
   if (current_millis - blinker_millis >= 500) {
     if (!blinker_state) {
-      leds[0] = CRGB(255, 100, 0);
+      leds[0] = CRGB(255, 65, 0);
       blinker_state = true;
     }
     else {
@@ -291,8 +312,13 @@ void setup() {
     blinker_millis = 0;
     reader_millis = 0;
     fingupter_millis = 0;
+    light_stop_millis = 0;
+    last_loop = 0;
+    light_stop_power = 0;
+    stop_light_state = false;
     turning = false;
     blinker_state = false;
+    operation = true;
 
     FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
     pinMode(LIGHT_PIN, OUTPUT);
@@ -302,7 +328,15 @@ void setup() {
 }
 
 void loop() {
+  last_loop = current_millis;
   current_millis = millis();
+  if (last_loop > current_millis) {
+    blinker_millis = 0;
+    reader_millis = 0;
+    fingupter_millis = 0;
+    light_stop_millis = 0;
+    last_loop = 0;
+  }
     // read raw accel/gyro measurements from device
   if (current_millis - reader_millis >= 50) {
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
@@ -347,17 +381,26 @@ void loop() {
       if ((val_ay.getAverage() < 10000) && (val_ay.getAverage() > -10000)) {
         turning = false;
       }
-      if (turning) {
+      if (turning)
         blinker();
-        //Serial.print("TURNING");
-      } else {
+      //Serial.print("TURNING");
+      else
         blinker_state = false;
-        leds[0] = CRGB(0, 0, 0);
-        FastLED.show();
-      }
-      if ((digitalRead(FINGUPTER) == HIGH) && (current_millis - fingupter_millis > 5000)) {
+
+      if (val_ax.getAverage() > 10000)
+        stop_light_state = true;
+      if (val_ax.getAverage() < 10000)
+        stop_light_state = false;
+
+      if (stop_light_state)
+        light_stoping();
+      if ((digitalRead(FINGUPTER) == LOW) && (current_millis - fingupter_millis > 5000)) {
         digitalWrite(LIGHT_PIN, !digitalRead(LIGHT_PIN));
         fingupter_millis = current_millis;
+      }
+      if (!stop_light_state && !turning) {
+        leds[0] = CRGB(0 ,0 ,0);
+        FastLED.show();
       }
         /*
         Serial.print(val_gx.getMin()); Serial.print("\t");
