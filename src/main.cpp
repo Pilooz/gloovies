@@ -115,7 +115,7 @@ THE SOFTWARE.
 #define LED_TYPE WS2812
 #define COLOR_ORDER GRB
 #define LIGHT_PIN D8
-#define FINGUPTER D6
+#define FRONT_LIGHT_BUTTON D6
 
 CRGB leds[NUM_LEDS];
 
@@ -153,7 +153,6 @@ RunningAverage val_gz(nb_vals);
 long current_millis;
 long blinker_millis;
 long reader_millis;
-long fingupter_millis;
 long light_stop_millis;
 long last_loop;
 unsigned char light_stop_power;
@@ -161,6 +160,9 @@ bool stop_light_state;
 bool operation;
 bool turning;
 bool blinker_state;
+bool front_light_state;
+bool front_light_state_stop;
+bool front_light_state_blinker;
 
 // #define LED_PIN 13
 // bool blinkState = false;
@@ -311,7 +313,6 @@ void setup() {
     current_millis = 0;
     blinker_millis = 0;
     reader_millis = 0;
-    fingupter_millis = 0;
     light_stop_millis = 0;
     last_loop = 0;
     light_stop_power = 0;
@@ -319,11 +320,14 @@ void setup() {
     turning = false;
     blinker_state = false;
     operation = true;
+    front_light_state = true;
+    front_light_state_stop = false;
+    front_light_state_blinker = false;
 
     FastLED.addLeds<LED_TYPE, DATA_PIN, COLOR_ORDER>(leds, NUM_LEDS);
     pinMode(LIGHT_PIN, OUTPUT);
     digitalWrite(LIGHT_PIN, LOW);
-    pinMode(FINGUPTER, INPUT_PULLUP);
+    pinMode(FRONT_LIGHT_BUTTON, INPUT_PULLUP);
     init_led();
 }
 
@@ -333,7 +337,6 @@ void loop() {
   if (last_loop > current_millis) {
     blinker_millis = 0;
     reader_millis = 0;
-    fingupter_millis = 0;
     light_stop_millis = 0;
     last_loop = 0;
   }
@@ -375,33 +378,42 @@ void loop() {
     //accelgyro.getRotation(&gx, &gy, &gz);
 
     #ifdef OUTPUT_READABLE_ACCELGYRO
-      if ((val_ay.getAverage() > 10000) || (val_ay.getAverage() < -10000)) {
+      if ((val_ay.getAverage() > 12000) || (val_ay.getAverage() < -12000)) {
         turning = true;
       }
-      if ((val_ay.getAverage() < 10000) && (val_ay.getAverage() > -10000)) {
+      if ((val_ay.getAverage() < 12000) && (val_ay.getAverage() > -12000)) {
         turning = false;
       }
-      if (turning)
+      if (turning) {
         blinker();
+        front_light_state_blinker = false;
       //Serial.print("TURNING");
-      else
+      } else {
         blinker_state = false;
-
-      if (val_ax.getAverage() > 10000)
+        front_light_state_blinker = true;
+      }
+      if (val_ax.getAverage() > 12000) {
         stop_light_state = true;
-      if (val_ax.getAverage() < 10000)
+        front_light_state_stop = false;
+      } else {
         stop_light_state = false;
-
+        front_light_state_stop = true;
+      }
       if (stop_light_state)
         light_stoping();
-      if ((digitalRead(FINGUPTER) == LOW) && (current_millis - fingupter_millis > 5000)) {
-        digitalWrite(LIGHT_PIN, !digitalRead(LIGHT_PIN));
-        fingupter_millis = current_millis;
-      }
       if (!stop_light_state && !turning) {
         leds[0] = CRGB(0 ,0 ,0);
         FastLED.show();
       }
+      if (!front_light_state_blinker || !front_light_state_stop) {
+        front_light_state = false;
+      } else {
+        front_light_state = true;
+      }
+      if (front_light_state == true && digitalRead(FRONT_LIGHT_BUTTON) == LOW)
+        digitalWrite(LIGHT_PIN, HIGH);
+      else
+        digitalWrite(LIGHT_PIN, LOW);
         /*
         Serial.print(val_gx.getMin()); Serial.print("\t");
         Serial.print(val_gx.getAverage()); Serial.print("\t");
