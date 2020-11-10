@@ -1,109 +1,4 @@
-/*
-
- Matériel :
-  - MPU 6050c (Gy521 breakout). Alimenter de prérérence en 5v pour éviter le
- bruit sur le bus I2C Ressources  :
-  - https://playground.arduino.cc/Main/MPU-6050/
-
-
 #include <Arduino.h>
-// MPU-6050 Short Example Sketch
-// By Arduino User JohnChi
-// August 17, 2014
-// Public Domain
-#include <Wire.h>
-#include "structures.h"
-
-const int MPU_addr = 0x68; // I2C address of the MPU-6050
-// int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
-mpu6050_struct mesures;
-
-void setup() {
-  Wire.begin();
-  Wire.beginTransmission(MPU_addr);
-  Wire.write(0x6B); // PWR_MGMT_1 register
-  Wire.write(0);    // set to zero (wakes up the MPU-6050)
-  Wire.endTransmission(true);
-  Serial.begin(9600);
-}
-void loop() {
-  Wire.beginTransmission(MPU_addr);
-  Wire.write(0x3B); // starting with register 0x3B (ACCEL_XOUT_H)
-  Wire.endTransmission(false);
-  Wire.requestFrom(MPU_addr, 14, true); // request a total of 14 registers
-  mesures.AcX = Wire.read() << 8 |
-        Wire.read(); // 0x3B (ACCEL_XOUT_H) & 0x3C (ACCEL_XOUT_L)
-  mesures.AcY = Wire.read() << 8 |
-        Wire.read(); // 0x3D (ACCEL_YOUT_H) & 0x3E (ACCEL_YOUT_L)
-  mesures.AcZ = Wire.read() << 8 |
-        Wire.read(); // 0x3F (ACCEL_ZOUT_H) & 0x40 (ACCEL_ZOUT_L)
-  mesures.Tmp = Wire.read() << 8 | Wire.read(); // 0x41 (TEMP_OUT_H) & 0x42 (TEMP_OUT_L)
-  mesures.GyX = Wire.read() << 8 | Wire.read(); // 0x43 (GYRO_XOUT_H) & 0x44 (GYRO_XOUT_L)
-  mesures.GyY = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
-  mesures.GyZ = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
-  Serial.print("AcX = ");
-  Serial.print(mesures.AcX);
-  Serial.print(" | AcY = ");
-  Serial.print(mesures.AcY);
-  Serial.print(" | AcZ = ");
-  Serial.print(mesures.AcZ);
-  Serial.print(" | Tmp = ");
-  Serial.print(mesures.Tmp / 340.00 +
-               36.53); // equation for temperature in degrees C from datasheet
-  Serial.print(" | GyX = ");
-  Serial.print(mesures.GyX);
-  Serial.print(" | GyY = ");
-  Serial.print(mesures.GyY);
-  Serial.print(" | GyZ = ");
-  Serial.println(mesures.GyZ);
-  delay(333);
-}
-
-*/
-
-/*
-
- Matériel :
-  - MPU 6050c (Gy521 breakout). Alimenter de prérérence en 5v pour éviter le
- bruit sur le bus I2C Ressources  :
-  - https://playground.arduino.cc/Main/MPU-6050/
-
-*/
-// I2C device class (I2Cdev) demonstration Arduino sketch for MPU6050 class
-// 10/7/2011 by Jeff Rowberg <jeff@rowberg.net>
-// Updates should (hopefully) always be available at https://github.com/jrowberg/i2cdevlib
-//
-// Changelog:
-//      2013-05-08 - added multiple output formats
-//                 - added seamless Fastwire support
-//      2011-10-07 - initial release
-
-/* ============================================
-I2Cdev device library code is placed under the MIT license
-Copyright (c) 2011 Jeff Rowberg
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-===============================================
-*/
-#include <Arduino.h>
-// I2Cdev and MPU6050 must be installed as libraries, or else the .cpp/.h files
-// for both classes must be in the include path of your project
 #include "Wire.h"
 #include "MPU6050.h"
 #include "RunningAverage.h"
@@ -121,13 +16,9 @@ CRGB leds[NUM_LEDS];
 
 int nb_vals = 20; // for running averages
 
-// class default I2C address is 0x68
-// specific I2C addresses may be passed as a parameter here
-// AD0 low = 0x68 (default for InvenSense evaluation board)
-// AD0 high = 0x69
 // MPU6050 accelgyro;
 const int MPU_addr = 0x68; // I2C address of the MPU-6050
-MPU6050 accelgyro(MPU_addr); // <-- use for AD0 high
+MPU6050 accelgyro(MPU_addr);
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
@@ -138,17 +29,6 @@ RunningAverage val_az(nb_vals);
 RunningAverage val_gx(nb_vals);
 RunningAverage val_gy(nb_vals);
 RunningAverage val_gz(nb_vals);
-
-// uncomment "OUTPUT_READABLE_ACCELGYRO" if you want to see a tab-separated
-// list of the accel X/Y/Z and then gyro X/Y/Z values in decimal. Easy to read,
-// not so easy to parse, and slow(er) over UART.
-#define OUTPUT_READABLE_ACCELGYRO
-
-// uncomment "OUTPUT_BINARY_ACCELGYRO" to send all 6 axes of data as 16-bit
-// binary, one right after the other. This is very fast (as fast as possible
-// without compression or data loss), and easy to parse, but impossible to read
-// for a human.
-//#define OUTPUT_BINARY_ACCELGYRO
 
 long current_millis;
 long blinker_millis;
@@ -261,8 +141,6 @@ void setup() {
     Wire.endTransmission(true);
 
     // initialize serial communication
-    // (38400 chosen because it works as well at 8MHz as it does at 16MHz, but
-    // it's really up to you depending on your project)
     Serial.begin(9600);
 
     // initialize device
@@ -271,21 +149,10 @@ void setup() {
 
     // verify connection
     Serial.println("Testing device connections...");
-    //while (!accelgyro.testConnection());
 
     Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
 
-    // use the code below to change accel/gyro offset values
-
     Serial.println("Updating internal sensor offsets...");
-    // -76	-2359	1688	0	0	0
-    // Serial.print(accelgyro.getXAccelOffset()); Serial.print("\t"); // -76
-    // Serial.print(accelgyro.getYAccelOffset()); Serial.print("\t"); // -2359
-    // Serial.print(accelgyro.getZAccelOffset()); Serial.print("\t"); // 1688
-    // Serial.print(accelgyro.getXGyroOffset()); Serial.print("\t"); // 0
-    // Serial.print(accelgyro.getYGyroOffset()); Serial.print("\t"); // 0
-    // Serial.print(accelgyro.getZGyroOffset()); Serial.print("\t"); // 0
-    // Serial.print("\n");
 
     accelgyro.setXGyroOffset(-20);
     accelgyro.setYGyroOffset(47);
@@ -294,17 +161,6 @@ void setup() {
     accelgyro.setYAccelOffset(590);
     accelgyro.setZAccelOffset(1466);
 
-    // Serial.print(accelgyro.getXAccelOffset()); Serial.print("\t"); // -76
-    // Serial.print(accelgyro.getYAccelOffset()); Serial.print("\t"); // -2359
-    // Serial.print(accelgyro.getZAccelOffset()); Serial.print("\t"); // 1688
-    // Serial.print(accelgyro.getXGyroOffset()); Serial.print("\t"); // 0
-    // Serial.print(accelgyro.getYGyroOffset()); Serial.print("\t"); // 0
-    // Serial.print(accelgyro.getZGyroOffset()); Serial.print("\t"); // 0
-    // Serial.print("\n");
-
-
-    // configure Arduino LED pin for output
-    // pinMode(LED_PIN, OUTPUT);
     val_ax.fillValue(0, nb_vals);
     val_ay.fillValue(0, nb_vals);
     val_az.fillValue(0, nb_vals);
@@ -336,13 +192,14 @@ void setup() {
 void loop() {
   last_loop = current_millis;
   current_millis = millis();
+
   if (last_loop > current_millis) {
     blinker_millis = 0;
     reader_millis = 0;
     light_stop_millis = 0;
     last_loop = 0;
   }
-    // read raw accel/gyro measurements from device
+
   if (current_millis - reader_millis >= 50) {
     accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
     val_ax.addValue(ax);
@@ -355,16 +212,6 @@ void loop() {
 
     // display tab-separated accel/gyro x/y/z values
     Serial.print("a/g:\t");
-    /*
-    Serial.print(val_ax.getAverage()); Serial.print("   ");
-    Serial.print(val_ay.getAverage()); Serial.print("   ");
-    Serial.print(val_az.getAverage()); Serial.print("   ");
-    Serial.print("          ");
-    Serial.print(val_gx.getAverage()); Serial.print("   ");
-    Serial.print(val_gy.getAverage()); Serial.print("   ");
-    Serial.print(val_gz.getAverage()); Serial.print("   ");
-    Serial.println("");
-    */
     Serial.print(ax); Serial.print("   ");
     Serial.print(ay); Serial.print("   ");
     Serial.print(az); Serial.print("   ");
@@ -375,109 +222,47 @@ void loop() {
     Serial.println("");
   }
 
-    // these methods (and a few others) are also available
-    //accelgyro.getAcceleration(&ax, &ay, &az);
-    //accelgyro.getRotation(&gx, &gy, &gz);
+  if ((val_ay.getAverage() > 10000) || (val_ay.getAverage() < -10000)) {
+    turning = true;
+  }
+  if ((val_ay.getAverage() < 10000) && (val_ay.getAverage() > -10000)) {
+    turning = false;
+  }
+  if (turning) {
+    blinker();
+    front_light_state_blinker = false;
+  //Serial.print("TURNING");
+  } else {
+    blinker_state = false;
+    front_light_state_blinker = true;
+  }
 
-    #ifdef OUTPUT_READABLE_ACCELGYRO
-      if ((val_ay.getAverage() > 10000) || (val_ay.getAverage() < -10000)) {
-        turning = true;
-      }
-      if ((val_ay.getAverage() < 10000) && (val_ay.getAverage() > -10000)) {
-        turning = false;
-      }
-      if (turning) {
-        blinker();
-        front_light_state_blinker = false;
-      //Serial.print("TURNING");
-      } else {
-        blinker_state = false;
-        front_light_state_blinker = true;
-      }
-      if (val_ax.getAverage() > 10000) {
-        stop_light_state = true;
-        front_light_state_stop = false;
-      } else {
-        stop_light_state = false;
-        front_light_state_stop = true;
-      }
-      if (stop_light_state)
-        light_stoping();
-      if (!stop_light_state && !turning) {
-        leds[0] = CRGB(0 ,0 ,0);
-        FastLED.show();
-      }
-      if (!front_light_state_blinker || !front_light_state_stop) {
-        front_light_state = false;
-      } else {
-        front_light_state = true;
-      }
-      if (front_light_state == true && digitalRead(FRONT_LIGHT_BUTTON) == LOW)
-        digitalWrite(LIGHT_PIN, HIGH);
-      else
-        digitalWrite(LIGHT_PIN, LOW);
-        /*
-        Serial.print(val_gx.getMin()); Serial.print("\t");
-        Serial.print(val_gx.getAverage()); Serial.print("\t");
-        Serial.print(val_gx.getMax()); Serial.print("\t");
-        */
-        // Serial.print(val_gy.getAverage()); Serial.print("\t");
-        // Serial.print(val_gz.getAverage()); Serial.print("\t");
-        /*
-        Serial.print("x value:\t");
-        if (val_gx.getAverage() < 1000) {
-          Serial.print(1); Serial.print("\t");
-        } else if (val_gx.getAverage() > 10000) {
-          Serial.print(-1); Serial.print("\t");
-        } else {
-          Serial.print(0); Serial.print("\t");
-        }
-        Serial.print("\ny value:\t");
-        if (val_gy.getAverage() < 1000) {
-          Serial.print(1); Serial.print("\t");
-        } else if (val_gy.getAverage() > 10000) {
-          Serial.print(-1); Serial.print("\t");
-        } else {
-          Serial.print(0); Serial.print("\t");
-        }
-        Serial.print("\nz value:\t");
-        if (val_gz.getAverage() < 1000) {
-          Serial.print(1); Serial.print("\t");
-        } else if (val_gz.getAverage() > 10000) {
-          Serial.print(-1); Serial.print("\t");
-        } else {
-          Serial.print(0); Serial.print("\t");
-        }
-        */
-        // Serial.print(val_ax.getMin()); Serial.print("\t");
-        // Serial.print(val_ay.getMin()); Serial.print("\t");
-        // Serial.print(val_az.getMin()); Serial.print("\t");
-        // Serial.print(val_gx.getMin()); Serial.print("\t");
-        // Serial.print(val_gy.getMin()); Serial.print("\t");
-        // Serial.print(val_gz.getMin()); Serial.print("\t");
+  if (val_ax.getAverage() > 10000) {
+    stop_light_state = true;
+    front_light_state_stop = false;
+  } else {
+    stop_light_state = false;
+    front_light_state_stop = true;
+  }
 
-        // Serial.print(val_ax.getMax()); Serial.print("\t");
-        // Serial.print(val_ay.getMax()); Serial.print("\t");
-        // Serial.print(val_az.getMax()); Serial.print("\t");
-        // Serial.print(val_gx.getMax()); Serial.print("\t");
-        // Serial.print(val_gy.getMax()); Serial.print("\t");
-        // Serial.print(val_gz.getMax()); Serial.print("\t");
+  if (stop_light_state) {
+    light_stoping();
+  }
 
-        // Serial.print(gx); Serial.print("\t");
-        // Serial.print(gy); Serial.print("\t");
-        // Serial.println(gz);
-    #endif
+  if (!stop_light_state && !turning) {
+    leds[0] = CRGB(0 ,0 ,0);
+    FastLED.show();
+  }
 
-    #ifdef OUTPUT_BINARY_ACCELGYRO
-        Serial.write((uint8_t)(ax >> 8)); Serial.write((uint8_t)(ax & 0xFF));
-        Serial.write((uint8_t)(ay >> 8)); Serial.write((uint8_t)(ay & 0xFF));
-        Serial.write((uint8_t)(az >> 8)); Serial.write((uint8_t)(az & 0xFF));
-        Serial.write((uint8_t)(gx >> 8)); Serial.write((uint8_t)(gx & 0xFF));
-        Serial.write((uint8_t)(gy >> 8)); Serial.write((uint8_t)(gy & 0xFF));
-        Serial.write((uint8_t)(gz >> 8)); Serial.write((uint8_t)(gz & 0xFF));
-    #endif
+  if (!front_light_state_blinker || !front_light_state_stop) {
+    front_light_state = false;
+  } else {
+    front_light_state = true;
+  }
 
-    // blink LED to indicate activity
-    // blinkState = !blinkState;
-    // digitalWrite(LED_PIN, blinkState);
+  if (front_light_state == true && digitalRead(FRONT_LIGHT_BUTTON) == LOW) {
+    digitalWrite(LIGHT_PIN, HIGH);
+  } else {
+    digitalWrite(LIGHT_PIN, LOW);
+  }
 }
