@@ -4,6 +4,7 @@
 #include "RunningAverage.h"
 #include "FastLED.h"
 #include "LittleFS.h"
+#include "ArduinoJson.h"
 
 #define NUM_LEDS 1
 #define DATA_PIN D7
@@ -11,17 +12,22 @@
 #define COLOR_ORDER GRB
 #define LIGHT_PIN D8
 #define FRONT_LIGHT_BUTTON D6
+#define JSON_NAME "config.json"
+#define DESERIALISATION_CAPACITY 2*JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(3) + 40
+#define SERIALISATION_CAPACITY 2*JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(3)
 
+//for leds
 CRGB leds[NUM_LEDS];
 
-int nb_vals = 20; // for running averages
-
-// MPU6050 accelgyro;
+//MPU6050 accelgyro;
 const int MPU_addr = 0x68; // I2C address of the MPU-6050
 MPU6050 accelgyro(MPU_addr);
 
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
+
+//for running averages
+int nb_vals = 20;
 
 RunningAverage val_ax(nb_vals);
 RunningAverage val_ay(nb_vals);
@@ -30,6 +36,7 @@ RunningAverage val_gx(nb_vals);
 RunningAverage val_gy(nb_vals);
 RunningAverage val_gz(nb_vals);
 
+//program's values
 long current_millis;
 long blinker_millis;
 long reader_millis;
@@ -131,8 +138,56 @@ void init_led() {
   FastLED.show();
 }
 
+void read_file(File file) {
+  DynamicJsonDocument doc(DESERIALISATION_CAPACITY);
+  deserializeJson(doc, file);
+  JsonArray accelerometer = doc["accelerometer"];
+  JsonArray gyroscope = doc["gyroscope"];
+  accelgyro.setXGyroOffset(gyroscope[0]);
+  accelgyro.setYGyroOffset(gyroscope[1]);
+  accelgyro.setZGyroOffset(gyroscope[2]);
+  accelgyro.setXAccelOffset(accelerometer[0]);
+  accelgyro.setYAccelOffset(accelerometer[1]);
+  accelgyro.setZAccelOffset(accelerometer[2]);
+  file.close();
+}
+
+File calibration(File file) {
+
+  return (file);
+}
+
+File test_file(File file) {
+  DynamicJsonDocument doc(DESERIALISATION_CAPACITY);
+  if (deserializeJson(doc, file)) {
+    file.close();
+    create_file();
+    file = LittleFS.open(JSON_NAME, "r");
+    calibration(file);
+  } else {
+    if (!doc["calibration"]) {
+      calibration(file);
+    }
+  }
+  return (file);
+}
+
+void create_file() {
+  File file = LittleFS.open(JSON_NAME, "w");
+  file.print("{\"calibration\":false,\"accelerometer\":[0,0,0],\"gyroscope\":[0,0,0]}");
+  file.close();
+}
+
 void setup() {
     LittleFS.begin();
+    File file = LittleFS.open(JSON_NAME, "r");
+    if (!file){
+      file.close();
+      create_file();
+      File file = LittleFS.open(JSON_NAME, "r");
+    }
+    file = test_file(file);
+    read_file(file);
     LittleFS.end();
     Wire.begin();
     Wire.beginTransmission(MPU_addr);
@@ -153,13 +208,6 @@ void setup() {
     Serial.println(accelgyro.testConnection() ? "MPU6050 connection successful" : "MPU6050 connection failed");
 
     Serial.println("Updating internal sensor offsets...");
-
-    accelgyro.setXGyroOffset(-20);
-    accelgyro.setYGyroOffset(47);
-    accelgyro.setZGyroOffset(37);
-    accelgyro.setXAccelOffset(797);
-    accelgyro.setYAccelOffset(590);
-    accelgyro.setZAccelOffset(1466);
 
     val_ax.fillValue(0, nb_vals);
     val_ay.fillValue(0, nb_vals);
