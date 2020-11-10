@@ -69,7 +69,6 @@ void loop() {
   - https://playground.arduino.cc/Main/MPU-6050/
 
 */
-#include <Arduino.h>
 // I2C device class (I2Cdev) demonstration Arduino sketch for MPU6050 class
 // 10/7/2011 by Jeff Rowberg <jeff@rowberg.net>
 // Updates should (hopefully) always be available at https://github.com/jrowberg/i2cdevlib
@@ -109,6 +108,7 @@ THE SOFTWARE.
 #include "MPU6050.h"
 #include "RunningAverage.h"
 #include "FastLED.h"
+#include "LittleFS.h"
 
 #define NUM_LEDS 1
 #define DATA_PIN D7
@@ -200,49 +200,49 @@ void blinker() {
 
 void init_led() {
   digitalWrite(LIGHT_PIN, HIGH);
-  for (int r = 0; r < 255; r++) {
+  for (int r = 0; r < 255; r+=2) {
     leds[0] = CRGB(r, 0, 0);
     FastLED.show();
     delay(2);
   }
   digitalWrite(LIGHT_PIN, LOW);
-  for (int r = 255; r > 1; r--) {
+  for (int r = 255; r > 1; r-=2) {
     leds[0] = CRGB(r, 0, 0);
     FastLED.show();
     delay(2);
   }
   digitalWrite(LIGHT_PIN, HIGH);
-  for (int g = 0; g < 255; g++) {
+  for (int g = 0; g < 255; g+=2) {
     leds[0] = CRGB(0, g, 0);
     FastLED.show();
     delay(2);
   }
   digitalWrite(LIGHT_PIN, LOW);
-  for (int g = 255; g > 1; g--) {
+  for (int g = 255; g > 1; g-=2) {
     leds[0] = CRGB(0, g, 0);
     FastLED.show();
     delay(2);
   }
   digitalWrite(LIGHT_PIN, HIGH);
-  for (int b = 0; b < 255; b++) {
+  for (int b = 0; b < 255; b+=2) {
     leds[0] = CRGB(0, 0, b);
     FastLED.show();
     delay(2);
   }
   digitalWrite(LIGHT_PIN, LOW);
-  for (int b = 255; b > 1; b--) {
+  for (int b = 255; b > 1; b-=2) {
     leds[0] = CRGB(0, 0, b);
     FastLED.show();
     delay(2);
   }
   digitalWrite(LIGHT_PIN, HIGH);
-  for (int a = 0; a < 255; a++) {
+  for (int a = 0; a < 255; a+=2) {
     leds[0] = CRGB(a, a, a);
     FastLED.show();
     delay(2);
   }
   digitalWrite(LIGHT_PIN, LOW);
-  for (int a = 255; a > 1; a--) {
+  for (int a = 255; a > 1; a-=2) {
     leds[0] = CRGB(a, a, a);
     FastLED.show();
     delay(2);
@@ -252,6 +252,8 @@ void init_led() {
 }
 
 void setup() {
+    LittleFS.begin();
+    LittleFS.end();
     Wire.begin();
     Wire.beginTransmission(MPU_addr);
     Wire.write(0x6B); // PWR_MGMT_1 register
@@ -378,10 +380,10 @@ void loop() {
     //accelgyro.getRotation(&gx, &gy, &gz);
 
     #ifdef OUTPUT_READABLE_ACCELGYRO
-      if ((val_ay.getAverage() > 12000) || (val_ay.getAverage() < -12000)) {
+      if ((val_ay.getAverage() > 10000) || (val_ay.getAverage() < -10000)) {
         turning = true;
       }
-      if ((val_ay.getAverage() < 12000) && (val_ay.getAverage() > -12000)) {
+      if ((val_ay.getAverage() < 10000) && (val_ay.getAverage() > -10000)) {
         turning = false;
       }
       if (turning) {
@@ -392,7 +394,7 @@ void loop() {
         blinker_state = false;
         front_light_state_blinker = true;
       }
-      if (val_ax.getAverage() > 12000) {
+      if (val_ax.getAverage() > 10000) {
         stop_light_state = true;
         front_light_state_stop = false;
       } else {
