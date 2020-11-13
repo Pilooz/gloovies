@@ -12,7 +12,7 @@
 #define COLOR_ORDER GRB
 #define LIGHT_PIN D8
 #define FRONT_LIGHT_BUTTON D6
-#define JSON_NAME "config.json"
+#define JSON_NAME "/config.json"
 #define DESERIALISATION_CAPACITY 2*JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(3) + 40
 #define SERIALISATION_CAPACITY 2*JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(3)
 
@@ -231,7 +231,18 @@ void calibration(){
   }
 }
 
-void read_file(File file) {
+void print_file() {
+  File file = LittleFS.open(JSON_NAME, "r");
+  Serial.println("print the interior of the file");
+  while (file.available())
+    Serial.write(file.read());
+  file.close();
+  Serial.println("");
+}
+
+void read_file() {
+  print_file();
+  File file = LittleFS.open(JSON_NAME, "r");
   DynamicJsonDocument doc(DESERIALISATION_CAPACITY);
   deserializeJson(doc, file);
   JsonArray accelerometer = doc["accelerometer"];
@@ -259,7 +270,8 @@ void read_file(File file) {
   file.close();
 }
 
-File calibration_update_file(File file) {
+void calibration_update_file() {
+  File file = LittleFS.open(JSON_NAME, "w");
   DynamicJsonDocument doc(SERIALISATION_CAPACITY);
   JsonArray accelerometer = doc.createNestedArray("accelerometer");
   JsonArray gyroscope = doc.createNestedArray("gyroscope");
@@ -303,37 +315,35 @@ File calibration_update_file(File file) {
   Serial.print(json_in_string);
   file.print(json_in_string);
   Serial.println("\n\n\n//////////////////JUST AFTER PRINTING IN FILE\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\n\n");
-  return (file);
+  file.close();
 }
 
 void create_file() {
   File file = LittleFS.open(JSON_NAME, "w");
   file.print("{\"calibration\":false,\"accelerometer\":[0,0,0],\"gyroscope\":[0,0,0]}");
   Serial.println("in create file");
-  Serial.println(file);
   file.close();
 }
 
-File test_file(File file) {
+void test_file() {
   DynamicJsonDocument doc(DESERIALISATION_CAPACITY);
+  File file = LittleFS.open(JSON_NAME, "r");
+  bool calibration;
   if (deserializeJson(doc, file)) {
     Serial.println("deserialisation error");
     file.close();
     create_file();
-    file = LittleFS.open(JSON_NAME, "w");
-    file = calibration_update_file(file);
-    file.close();
-    file = LittleFS.open(JSON_NAME, "r");
+    calibration_update_file();
   } else {
-    if (!doc["calibration"]) {
+    calibration = doc["calibration"];
+    Serial.println(calibration);
+    if (!calibration) {
       file.close();
-      file = LittleFS.open(JSON_NAME, "w");
-      file = calibration_update_file(file);
+      calibration_update_file();
+    } else {
       file.close();
-      file = LittleFS.open(JSON_NAME, "r");
     }
   }
-  return (file);
 }
 
 void setup() {
@@ -384,19 +394,17 @@ void setup() {
     pinMode(FRONT_LIGHT_BUTTON, INPUT_PULLUP);
 
     LittleFS.begin();
-    File file = LittleFS.open(JSON_NAME, "w");
-    file.print("bite");
-    file.close();
+    print_file();
+    File file;
     file = LittleFS.open(JSON_NAME, "r");
     if (!file){
       file.close();
       create_file();
-      File file = LittleFS.open(JSON_NAME, "r");
-      Serial.println(file);
+    } else {
+      file.close();
     }
-    Serial.println(file);
-    file = test_file(file);
-    read_file(file);
+    test_file();
+    read_file();
     LittleFS.end();
 
     init_led();
