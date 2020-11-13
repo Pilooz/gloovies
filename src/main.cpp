@@ -26,6 +26,14 @@ MPU6050 accelgyro(MPU_addr);
 int16_t ax, ay, az;
 int16_t gx, gy, gz;
 
+//for calibration system
+int buffersize=1000;     //Amount of readings used to average, make it higher to get more precision but sketch will be slower  (default:1000)
+int acel_deadzone=8;     //Acelerometer error allowed, make it lower to get more precision, but sketch may not converge  (default:8)
+int giro_deadzone=1;     //Giro error allowed, make it lower to get more precision, but sketch may not converge  (default:1)
+
+int mean_ax,mean_ay,mean_az,mean_gx,mean_gy,mean_gz=0;
+int ax_offset,ay_offset,az_offset,gx_offset,gy_offset,gz_offset;
+
 //for running averages
 int nb_vals = 20;
 
@@ -138,11 +146,110 @@ void init_led() {
   FastLED.show();
 }
 
+bool is_in_interval(int number, int min, int max, bool included){
+  if (included) {
+    if (number <= max && number >= min)
+      return (true);
+    else
+      return (false);
+  } else {
+    if (number < max && number > min)
+      return (true);
+    else
+      return (false);
+    }
+}
+
+void meansensors(){
+  long i=0,buff_ax=0,buff_ay=0,buff_az=0,buff_gx=0,buff_gy=0,buff_gz=0;
+
+  while (i<(buffersize+101)){
+    // read raw accel/gyro measurements from device
+    accelgyro.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+    if (i>100 && i<=(buffersize+100)){ //First 100 measures are discarded
+      buff_ax=buff_ax+ax;
+      buff_ay=buff_ay+ay;
+      buff_az=buff_az+az;
+      buff_gx=buff_gx+gx;
+      buff_gy=buff_gy+gy;
+      buff_gz=buff_gz+gz;
+    }
+    if (i==(buffersize+100)){
+      mean_ax=buff_ax/buffersize;
+      mean_ay=buff_ay/buffersize;
+      mean_az=buff_az/buffersize;
+      mean_gx=buff_gx/buffersize;
+      mean_gy=buff_gy/buffersize;
+      mean_gz=buff_gz/buffersize;
+    }
+    i++;
+    delay(2); //Needed so we don't get repeated measures
+  }
+}
+
+void calibration(){
+  ax_offset=-mean_ax/8;
+  ay_offset=-mean_ay/8;
+  az_offset=(16384-mean_az)/8;
+
+  gx_offset=-mean_gx/4;
+  gy_offset=-mean_gy/4;
+  gz_offset=-mean_gz/4;
+  while (1){
+    int ready=0;
+    accelgyro.setXAccelOffset(ax_offset);
+    accelgyro.setYAccelOffset(ay_offset);
+    accelgyro.setZAccelOffset(az_offset);
+
+    accelgyro.setXGyroOffset(gx_offset);
+    accelgyro.setYGyroOffset(gy_offset);
+    accelgyro.setZGyroOffset(gz_offset);
+
+    meansensors();
+    Serial.println("...");
+
+    if (abs(mean_ax)<=acel_deadzone) ready++;
+    else ax_offset=ax_offset-mean_ax/acel_deadzone;
+
+    if (abs(mean_ay)<=acel_deadzone) ready++;
+    else ay_offset=ay_offset-mean_ay/acel_deadzone;
+
+    if (abs(16384-mean_az)<=acel_deadzone) ready++;
+    else az_offset=az_offset+(16384-mean_az)/acel_deadzone;
+
+    if (abs(mean_gx)<=giro_deadzone) ready++;
+    else gx_offset=gx_offset-mean_gx/(giro_deadzone+1);
+
+    if (abs(mean_gy)<=giro_deadzone) ready++;
+    else gy_offset=gy_offset-mean_gy/(giro_deadzone+1);
+
+    if (abs(mean_gz)<=giro_deadzone) ready++;
+    else gz_offset=gz_offset-mean_gz/(giro_deadzone+1);
+
+    if (ready==6) break;
+  }
+}
+
 void read_file(File file) {
   DynamicJsonDocument doc(DESERIALISATION_CAPACITY);
   deserializeJson(doc, file);
   JsonArray accelerometer = doc["accelerometer"];
   JsonArray gyroscope = doc["gyroscope"];
+  int gx_save = gyroscope[0];
+  int gy_save = gyroscope[1];
+  int gz_save = gyroscope[2];
+  int ax_save = accelerometer[0];
+  int ay_save = accelerometer[1];
+  int az_save = accelerometer[2];
+  Serial.println("gyro save:");
+  Serial.println(gx_save);
+  Serial.println(gy_save);
+  Serial.println(gz_save);
+  Serial.println("accéléro save :");
+  Serial.println(ax_save);
+  Serial.println(ay_save);
+  Serial.println(az_save);
   accelgyro.setXGyroOffset(gyroscope[0]);
   accelgyro.setYGyroOffset(gyroscope[1]);
   accelgyro.setZGyroOffset(gyroscope[2]);
@@ -152,43 +259,84 @@ void read_file(File file) {
   file.close();
 }
 
-File calibration(File file) {
-
-  return (file);
-}
-
-File test_file(File file) {
-  DynamicJsonDocument doc(DESERIALISATION_CAPACITY);
-  if (deserializeJson(doc, file)) {
-    file.close();
-    create_file();
-    file = LittleFS.open(JSON_NAME, "r");
-    calibration(file);
+File calibration_update_file(File file) {
+  DynamicJsonDocument doc(SERIALISATION_CAPACITY);
+  JsonArray accelerometer = doc.createNestedArray("accelerometer");
+  JsonArray gyroscope = doc.createNestedArray("gyroscope");
+  String json_in_string = "";
+  accelgyro.setXAccelOffset(0);
+  accelgyro.setYAccelOffset(0);
+  accelgyro.setZAccelOffset(0);
+  accelgyro.setXGyroOffset(0);
+  accelgyro.setYGyroOffset(0);
+  accelgyro.setZGyroOffset(0);
+  Serial.println("\nReading sensors for first time...");
+  leds[0] = CRGB(255, 0, 255);
+  FastLED.show();
+  delay(1000);
+  meansensors();
+  delay(1000);
+  Serial.println("\nCalculating offsets...");
+  calibration();
+  Serial.println("End of calibration");
+  delay(1000);
+  meansensors();
+  if (is_in_interval(mean_ax, -100, 100, true) && is_in_interval(mean_ay, -100, 100, true) &&
+      is_in_interval(mean_az, 16284, 16484, true) && is_in_interval(mean_gx, -100, 100, true) &&
+      is_in_interval(mean_gy, -100, 100, true) && is_in_interval(mean_gz, -100, 100, true)) {
+        doc["calibration"] = true;
+        accelerometer.add(ax_offset);
+        accelerometer.add(ay_offset);
+        accelerometer.add(az_offset);
+        gyroscope.add(gx_offset);
+        gyroscope.add(gy_offset);
+        gyroscope.add(gz_offset);
   } else {
-    if (!doc["calibration"]) {
-      calibration(file);
-    }
+    Serial.println("\n\n\n//////////////////JUST BEFORE RESTART\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\n\n");
+    ESP.restart();
   }
+  leds[0] = CRGB(0, 0, 0);
+  FastLED.show();
+  Serial.println("\n\n\n//////////////////JUST BEFORE SERIALIZEJSON\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\n\n");
+  serializeJson(doc, json_in_string);
+  Serial.println("\n\n\n//////////////////JUST AFTER SERIALIZEJSON\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\n\n");
+  Serial.print(json_in_string);
+  file.print(json_in_string);
+  Serial.println("\n\n\n//////////////////JUST AFTER PRINTING IN FILE\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\n\n");
   return (file);
 }
 
 void create_file() {
   File file = LittleFS.open(JSON_NAME, "w");
   file.print("{\"calibration\":false,\"accelerometer\":[0,0,0],\"gyroscope\":[0,0,0]}");
+  Serial.println("in create file");
+  Serial.println(file);
   file.close();
 }
 
-void setup() {
-    LittleFS.begin();
-    File file = LittleFS.open(JSON_NAME, "r");
-    if (!file){
+File test_file(File file) {
+  DynamicJsonDocument doc(DESERIALISATION_CAPACITY);
+  if (deserializeJson(doc, file)) {
+    Serial.println("deserialisation error");
+    file.close();
+    create_file();
+    file = LittleFS.open(JSON_NAME, "w");
+    file = calibration_update_file(file);
+    file.close();
+    file = LittleFS.open(JSON_NAME, "r");
+  } else {
+    if (!doc["calibration"]) {
       file.close();
-      create_file();
-      File file = LittleFS.open(JSON_NAME, "r");
+      file = LittleFS.open(JSON_NAME, "w");
+      file = calibration_update_file(file);
+      file.close();
+      file = LittleFS.open(JSON_NAME, "r");
     }
-    file = test_file(file);
-    read_file(file);
-    LittleFS.end();
+  }
+  return (file);
+}
+
+void setup() {
     Wire.begin();
     Wire.beginTransmission(MPU_addr);
     Wire.write(0x6B); // PWR_MGMT_1 register
@@ -234,6 +382,23 @@ void setup() {
     pinMode(LIGHT_PIN, OUTPUT);
     digitalWrite(LIGHT_PIN, LOW);
     pinMode(FRONT_LIGHT_BUTTON, INPUT_PULLUP);
+
+    LittleFS.begin();
+    File file = LittleFS.open(JSON_NAME, "w");
+    file.print("bite");
+    file.close();
+    file = LittleFS.open(JSON_NAME, "r");
+    if (!file){
+      file.close();
+      create_file();
+      File file = LittleFS.open(JSON_NAME, "r");
+      Serial.println(file);
+    }
+    Serial.println(file);
+    file = test_file(file);
+    read_file(file);
+    LittleFS.end();
+
     init_led();
 }
 
@@ -257,7 +422,7 @@ void loop() {
     val_gy.addValue(gy);
     val_gz.addValue(gz);
     reader_millis = current_millis;
-
+    /*
     // display tab-separated accel/gyro x/y/z values
     Serial.print("a/g:\t");
     Serial.print(ax); Serial.print("   ");
@@ -268,6 +433,7 @@ void loop() {
     Serial.print(gy); Serial.print("   ");
     Serial.print(gz); Serial.print("   ");
     Serial.println("");
+    */
   }
 
   if ((val_ay.getAverage() > 10000) || (val_ay.getAverage() < -10000)) {
