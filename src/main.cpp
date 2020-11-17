@@ -12,6 +12,7 @@
 #define COLOR_ORDER GRB
 #define LIGHT_PIN D8
 #define FRONT_LIGHT_BUTTON D6
+#define RECALIBRATION D5
 #define JSON_NAME "/config.json"
 #define DESERIALISATION_CAPACITY 2*JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(3) + 40
 #define SERIALISATION_CAPACITY 2*JSON_ARRAY_SIZE(3) + JSON_OBJECT_SIZE(3)
@@ -241,7 +242,8 @@ void print_file() {
 }
 
 void read_file() {
-  print_file();
+  //print_file();
+  LittleFS.begin();
   File file = LittleFS.open(JSON_NAME, "r");
   DynamicJsonDocument doc(DESERIALISATION_CAPACITY);
   deserializeJson(doc, file);
@@ -268,6 +270,11 @@ void read_file() {
   accelgyro.setYAccelOffset(accelerometer[1]);
   accelgyro.setZAccelOffset(accelerometer[2]);
   file.close();
+  if (gx_save == 0 && gy_save == 0 && gz_save == 0 && ax_save == 0 && ay_save == 0 && az_save == 0) {
+    Serial.println("restart");
+    ESP.reset();
+  }
+  LittleFS.end();
 }
 
 void calibration_update_file() {
@@ -315,35 +322,40 @@ void calibration_update_file() {
   Serial.print(json_in_string);
   file.print(json_in_string);
   Serial.println("\n\n\n//////////////////JUST AFTER PRINTING IN FILE\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\n\n\n");
+  delay(2000);
   file.close();
 }
 
 void create_file() {
+  LittleFS.remove(JSON_NAME);
   File file = LittleFS.open(JSON_NAME, "w");
-  file.print("{\"calibration\":false,\"accelerometer\":[0,0,0],\"gyroscope\":[0,0,0]}");
+  file.print("{\"accelerometer\":[0,0,0],\"gyroscope\":[0,0,0],\"calibration\":false}");
   Serial.println("in create file");
   file.close();
 }
 
 void test_file() {
+  LittleFS.begin();
   DynamicJsonDocument doc(DESERIALISATION_CAPACITY);
   File file = LittleFS.open(JSON_NAME, "r");
   bool calibration;
   if (deserializeJson(doc, file)) {
     Serial.println("deserialisation error");
     file.close();
-    create_file();
+    LittleFS.remove(JSON_NAME);
     calibration_update_file();
   } else {
     calibration = doc["calibration"];
     Serial.println(calibration);
     if (!calibration) {
       file.close();
+      LittleFS.remove(JSON_NAME);
       calibration_update_file();
     } else {
       file.close();
     }
   }
+  LittleFS.end();
 }
 
 void setup() {
@@ -392,9 +404,9 @@ void setup() {
     pinMode(LIGHT_PIN, OUTPUT);
     digitalWrite(LIGHT_PIN, LOW);
     pinMode(FRONT_LIGHT_BUTTON, INPUT_PULLUP);
+    pinMode(RECALIBRATION, INPUT_PULLUP);
 
     LittleFS.begin();
-    print_file();
     File file;
     file = LittleFS.open(JSON_NAME, "r");
     if (!file){
@@ -403,9 +415,9 @@ void setup() {
     } else {
       file.close();
     }
+    LittleFS.end();
     test_file();
     read_file();
-    LittleFS.end();
 
     init_led();
 }
@@ -486,5 +498,14 @@ void loop() {
     digitalWrite(LIGHT_PIN, HIGH);
   } else {
     digitalWrite(LIGHT_PIN, LOW);
+  }
+
+  if (digitalRead(RECALIBRATION) == LOW) {
+    Serial.println("restart");
+    LittleFS.begin();
+    LittleFS.remove(JSON_NAME);
+    LittleFS.end();
+    delay(5000);
+    ESP.restart();
   }
 }
